@@ -21,8 +21,11 @@ fc = 1/6;
 % Sampling frequency (Hz)
 fs = 200;
 % Number of cycles to analyze
-cycle = 15;
-% cycle = 8;
+if index < 3
+    cycle = 15;
+else
+    cycle = 8;
+end
 
 load([bag_name(1:end-4), '.mat'], 'shape', 'command', 'position_velocity', 'shape_velocity');
 
