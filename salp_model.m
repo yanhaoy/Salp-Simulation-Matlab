@@ -13,8 +13,14 @@ import casadi.*
 % Shape
 r = SX.sym('r', [m, 1]);
 
+% Momentum
+p = SX.sym('p', [n+m, 1]);
+
 % Drag coefficients
 D_local = SX.sym('D_local', [n*(m+1)+m, n*(m+1)+m]);
+
+% Inertia coefficients
+M_local = SX.sym('M_local', [n*(m+1), n*(m+1)]);
 
 % Physics parameters
 link_length = sys.config.link_length;
@@ -108,11 +114,24 @@ f_control_velocity = jac_g_wheel' * D_local(1:3*(m+1), 1:3*(m+1)) * ...
 q_dot_thrust = -inv(-(jac_drag_thrust' * D_local * jac_drag_thrust)) * f_control_thrust;
 q_dot_velocity = -inv(-(jac_drag_velocity' * D_local * jac_drag_velocity)) * f_control_velocity;
 
+% Reconstruct the motion considering the inertia
+M = jac_g' * M_local * jac_g;
+q_dot = inv(M) * p;
+f_drag_thrust = -jac_drag_thrust' * D_local * jac_drag_thrust * q_dot;
+f_drag_velocity = -jac_drag_velocity' * D_local * jac_drag_velocity * q_dot;
+L = q_dot' * M * q_dot / 2;
+p_dot_thrust = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_thrust + f_drag_thrust;
+p_dot_velocity = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_velocity + f_drag_velocity;
+
 % Create function handles
 tmp = Function('q_dot_thrust', {r, u, D_local}, {q_dot_thrust}, struct('cse', true));
 sys.symbolic_handle.q_dot_thrust_func = Function('q_dot_thrust', {r, u}, {tmp(r, u, sys.config.D_local)}, struct('cse', true));
 tmp = Function('q_dot_velocity', {r, u, D_local}, {q_dot_velocity}, struct('cse', true));
 sys.symbolic_handle.q_dot_velocity_func = Function('q_dot_velocity', {r, u}, {tmp(r, u, sys.config.D_local)}, struct('cse', true));
+tmp = Function('eom_thrust', {r, p, u, D_local, M_local}, {[q_dot; p_dot_thrust]}, struct('cse', true));
+sys.symbolic_handle.eom_thrust_func = Function('eom_thrust', {r, p, u}, {tmp(r, p, u, sys.config.D_local, sys.config.M_local)}, struct('cse', true));
+tmp = Function('eom_velocity', {r, p, u, D_local, M_local}, {[q_dot; p_dot_velocity]}, struct('cse', true));
+sys.symbolic_handle.eom_velocity_func = Function('eom_velocity', {r, p, u}, {tmp(r, p, u, sys.config.D_local, sys.config.M_local)}, struct('cse', true));
 sys.symbolic_handle.g_i_func = Function('g_i_func', {r}, g_i, struct('cse', true));
 
 end
