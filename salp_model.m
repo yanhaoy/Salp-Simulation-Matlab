@@ -29,6 +29,7 @@ imu_transform = sys.config.imu_transform;
 
 % Control input
 u = SX.sym('u', [m+1, 1]);
+u_dot = SX.sym('u_dot', [m+1, 1]);
 
 %% Kinematics
 
@@ -97,6 +98,16 @@ for i = 1:m+1
     end
 end
 
+% IMU body velocity Jacobian
+jac_g_imu = SX.zeros((m+1)*n, n+m);
+for i = 1:m+1
+    tmp = jacobian(g_i_imu{i}(:), r);
+    jac_g_imu((i-1)*n+1:i*n, 1:n) = inv(tform2adjoint(g_i_imu{i}));
+    for j = 1:m
+        jac_g_imu((i-1)*n+1:i*n, n+j) = rbvel2twist(inv(g_i_imu{i}) * reshape(tmp(:, j), n, n));
+    end
+end
+
 %% Motion reconstruction
 
 % Jacobian to drag
@@ -114,24 +125,45 @@ f_control_velocity = jac_g_wheel' * D_local(1:3*(m+1), 1:3*(m+1)) * ...
 q_dot_thrust = -inv(-(jac_drag_thrust' * D_local * jac_drag_thrust)) * f_control_thrust;
 q_dot_velocity = -inv(-(jac_drag_velocity' * D_local * jac_drag_velocity)) * f_control_velocity;
 
+q_ddot_sol_thrust = jacobian(q_dot_thrust, [r; u]) * [q_dot_thrust(n+1:end); u_dot];
+q_ddot_sol_velocity = jacobian(q_dot_velocity, [r; u]) * [q_dot_velocity(n+1:end); u_dot];
+
 % Reconstruct the motion considering the inertia
 M = jac_g' * M_local * jac_g;
-q_dot = inv(M) * p;
-f_drag_thrust = -jac_drag_thrust' * D_local * jac_drag_thrust * q_dot;
-f_drag_velocity = -jac_drag_velocity' * D_local * jac_drag_velocity * q_dot;
-L = q_dot' * M * q_dot / 2;
-p_dot_thrust = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_thrust + f_drag_thrust;
-p_dot_velocity = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_velocity + f_drag_velocity;
+q_dot_sol = inv(M) * p;
+f_drag_thrust = -jac_drag_thrust' * D_local * jac_drag_thrust * q_dot_sol;
+f_drag_velocity = -jac_drag_velocity' * D_local * jac_drag_velocity * q_dot_sol;
+L = q_dot_sol' * M * q_dot_sol / 2;
+p_dot_thrust = [(dual_lie_bracket_SE2(q_dot_sol(1:n), p(1:n))); jacobian(L, r)'] + f_control_thrust + f_drag_thrust;
+p_dot_velocity = [(dual_lie_bracket_SE2(q_dot_sol(1:n), p(1:n))); jacobian(L, r)'] + f_control_velocity + f_drag_velocity;
+
+%% IMU body velocity and acceleration
+q_dot = SX.sym('q_dot', [n+m, 1]);
+q_ddot = SX.sym('q_ddot', [n+m, 1]);
+
+g_circ_imu = jac_g_imu * q_dot;
+g_circ_dot_imu = jacobian(g_circ_imu, [r; q_dot]) * [q_dot(n+1:end); q_ddot];
+tmp = SX.zeros(n*(m+1), 1);
+for i = 1:m+1
+    tmp((i-1)*n+1:i*n) = twist2rbvel(g_circ_imu((i-1)*n+1:i*n)) * g_circ_imu((i-1)*n+1:i*n);
+end
+g_ddot_imu_body = g_circ_dot_imu + tmp;
 
 % Create function handles
 tmp = Function('q_dot_thrust', {r, u, D_local}, {q_dot_thrust}, struct('cse', true));
 sys.symbolic_handle.q_dot_thrust_func = Function('q_dot_thrust', {r, u}, {tmp(r, u, sys.config.D_local)}, struct('cse', true));
 tmp = Function('q_dot_velocity', {r, u, D_local}, {q_dot_velocity}, struct('cse', true));
 sys.symbolic_handle.q_dot_velocity_func = Function('q_dot_velocity', {r, u}, {tmp(r, u, sys.config.D_local)}, struct('cse', true));
-tmp = Function('eom_thrust', {r, p, u, D_local, M_local}, {[q_dot; p_dot_thrust]}, struct('cse', true));
+tmp = Function('eom_thrust', {r, p, u, D_local, M_local}, {[q_dot_sol; p_dot_thrust]}, struct('cse', true));
 sys.symbolic_handle.eom_thrust_func = Function('eom_thrust', {r, p, u}, {tmp(r, p, u, sys.config.D_local, sys.config.M_local)}, struct('cse', true));
-tmp = Function('eom_velocity', {r, p, u, D_local, M_local}, {[q_dot; p_dot_velocity]}, struct('cse', true));
+tmp = Function('eom_velocity', {r, p, u, D_local, M_local}, {[q_dot_sol; p_dot_velocity]}, struct('cse', true));
 sys.symbolic_handle.eom_velocity_func = Function('eom_velocity', {r, p, u}, {tmp(r, p, u, sys.config.D_local, sys.config.M_local)}, struct('cse', true));
 sys.symbolic_handle.g_i_func = Function('g_i_func', {r}, g_i, struct('cse', true));
+tmp = Function('q_ddot_sol_thrust', {r, u, u_dot, D_local}, {q_ddot_sol_thrust}, struct('cse', true));
+sys.symbolic_handle.q_ddot_thrust_func = Function('q_ddot_sol_thrust', {r, u, u_dot}, {tmp(r, u, u_dot, sys.config.D_local)}, struct('cse', true));
+tmp = Function('q_ddot_sol_velocity', {r, u, u_dot, D_local}, {q_ddot_sol_velocity}, struct('cse', true));
+sys.symbolic_handle.q_ddot_velocity_func = Function('q_ddot_sol_velocity', {r, u, u_dot}, {tmp(r, u, u_dot, sys.config.D_local)}, struct('cse', true));
+sys.symbolic_handle.g_ddot_imu_body_func = Function('g_ddot_imu_body', {r, q_dot, q_ddot}, {g_ddot_imu_body}, struct('cse', true));
+sys.symbolic_handle.g_circ_imu_func = Function('g_circ_imu', {r, q_dot}, {g_circ_imu}, struct('cse', true));
 
 end
