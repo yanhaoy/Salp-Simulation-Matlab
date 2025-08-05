@@ -171,7 +171,7 @@ for j = 1:3
     sys.config = set_plot_config(sys.config, 'fullscreen', 1);
     f = create_fig('fullscreen');
     ax(2*j+1) = subplot(1, 2, 1);
-    title(ax(2*j+1), 'IMU');
+    title(ax(2*j+1), 'IMU vs Mocap');
     hold(ax(2*j+1), 'on');
     color = colororder;
 
@@ -180,7 +180,7 @@ for j = 1:3
     time_stat = (0:fs*(1/fc)-1) * (1/fs);
     yyaxis(ax(2*j+1), 'left');
     for i = 1:2
-        h_1(i) = plot(ax(2*j+1), time_stat, squeeze(g_ddot_imu_body_model_stat(i, j, :))', 'Color', color(i, :), 'LineStyle', '--');
+        h_1(i) = plot(ax(2*j+1), time_stat, squeeze(g_ddot_imu_body_mocap_stat(i, j, :))', 'Color', color(i, :), 'LineStyle', '--');
         h_1(i+3) = plot(ax(2*j+1), time_stat, squeeze(imu_stat(i, j, :))', 'Color', color(i, :), 'LineStyle', '-');
         patch(ax(2*j+1), [time_stat, fliplr(time_stat)], ...
             [squeeze(imu_stat(i+n, j, :))', fliplr(squeeze(imu_stat(i+n*2, j, :))')], ...
@@ -188,7 +188,7 @@ for j = 1:3
     end
     yyaxis(ax(2*j+1), 'right');
     i = 3;
-    h_1(i) = plot(ax(2*j+1), time_stat, squeeze(g_circ_imu_model_stat(i, j, :))', 'Color', color(i, :), 'LineStyle', '--');
+    h_1(i) = plot(ax(2*j+1), time_stat, squeeze(g_circ_imu_mocap_stat(i, j, :))', 'Color', color(i, :), 'LineStyle', '--');
     h_1(i+3) = plot(ax(2*j+1), time_stat, squeeze(imu_stat(i, j, :))', 'Color', color(i, :), 'LineStyle', '-');
     patch(ax(2*j+1), [time_stat, fliplr(time_stat)], ...
         [squeeze(imu_stat(i+n, j, :))', fliplr(squeeze(imu_stat(i+n*2, j, :))')], ...
@@ -211,13 +211,13 @@ for j = 1:3
     ax(2*j+1).YAxis(2).Color = 'k';
     ylabel(ax(2*j+1), 'Angular Acceleration $(rad/s^2)$');
     axis(ax(2*j+1), 'square');
-    legend(h_1, {'$a^x_{\mathrm{model}}$', '$a^y_{\mathrm{model}}$', '$\omega^z_{\mathrm{model}}$', ...
+    legend(h_1, {'$a^x_{\mathrm{mocap}}$', '$a^y_{\mathrm{mocap}}$', '$\omega^z_{\mathrm{mocap}}$', ...
         '$a^x_{\mathrm{imu}}$', '$a^y_{\mathrm{imu}}$', '$\omega^z_{\mathrm{imu}}$'}, ...
         'Location', 'southoutside', 'NumColumns', 6);
     hold(ax(2*j+1), 'off');
 
     ax(2*j+2) = subplot(1, 2, 2);
-    title(ax(2*j+2), 'Mocap');
+    title(ax(2*j+2), 'Mocap vs Model');
     hold(ax(2*j+2), 'on');
     color = colororder;
 
