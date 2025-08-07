@@ -27,12 +27,13 @@ else
     cycle = 8;
 end
 
-load([bag_name(1:end-4), '.mat'], 'shape', 'command', 'command_dot', 'position_velocity', 'position_acceleration', 'shape_velocity', 'shape_acceleration', 'accelerometer', 'gyro', 'force');
+load([bag_name(1:end-4), '.mat'], 'shape', 'command', 'command_dot', 'position_velocity', 'position_acceleration', 'shape_velocity', 'shape_acceleration', 'accelerometer', 'gyro', 'force', 'force_dot');
 
 %% Compute Predicted Acceleration
 [n, m] = deal(sys.config.n, sys.config.m);
 q_dot_velocity = full(sys.symbolic_handle.q_dot_velocity_func(shape, command));
-q_ddot_velocity = full(sys.symbolic_handle.q_ddot_velocity_func(shape, command, command_dot));
+q_ddot_velocity = full(sys.symbolic_handle.q_ddot_velocity_fst_func(shape, command, command_dot));
+% q_ddot_velocity = full(sys.symbolic_handle.q_ddot_velocity_snd_func(shape, q_dot_velocity, command + command_dot .* 0.011));
 
 g_circ_imu_mocap = reshape(full(sys.symbolic_handle.g_circ_imu_func(shape, [position_velocity; shape_velocity])),  3, 3, []);
 g_circ_imu_model = reshape(full(sys.symbolic_handle.g_circ_imu_func(shape, q_dot_velocity)),  3, 3, []);

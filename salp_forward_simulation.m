@@ -77,42 +77,6 @@ axis(ax(2), 'square');
 legend(h_2, {'$\alpha_1$', '$\alpha_2$'}, 'Location', 'southoutside', 'NumColumns', 2);
 hold(ax(2), 'off');
 
-%% Plot Momentum
-
-[~, ax(3)] = create_fig('square');
-hold(ax(3), 'on');
-color = colororder;
-
-yline(ax(3), 0, 'Color', [0.5, 0.5, 0.5], 'LineStyle', ':', 'LineWidth', sys.config.line_width);
-
-yyaxis(ax(3), 'left');
-for i = 1:2
-    h_3(i) = plot(ax(3), t, x(i + 6, :), 'Color', color(i, :), 'LineStyle', '-');
-end
-yyaxis(ax(3), 'right');
-i = 3;
-h_3(i) = plot(ax(3), t, x(i + 6, :), 'Color', color(i, :), 'LineStyle', '-');
-
-box(ax(3), 'on');
-ax(3).YAxis(1).Color = 'k';
-ax(3).YAxis(2).Color = 'k';
-xlabel(ax(3), 'Time');
-yyaxis(ax(3), 'left');
-ylim(ax(3), 'tight');
-tmp = ylim(ax(3));
-ylim(ax(3), [-1, 1] * max(abs(tmp)));
-ylabel(ax(3), 'Linear $(kg \cdot m/s)$');
-yyaxis(ax(3), 'right');
-ylim(ax(3), 'tight');
-tmp = ylim(ax(3));
-ylim(ax(3), [-1, 1] * max(abs(tmp)));
-ax(3).YAxis(1).Color = 'k';
-ax(3).YAxis(2).Color = 'k';
-ylabel(ax(3), 'Angular $(kg \cdot m^2/s)$');
-axis(ax(3), 'square');
-legend(h_3, {'$p_x$', '$p_y$', '$p_\theta$'}, 'Location', 'southoutside', 'NumColumns', 3);
-hold(ax(3), 'off');
-
 end
 
 function x_dot = x_dot_func(t, x, sys)
@@ -122,17 +86,18 @@ function x_dot = x_dot_func(t, x, sys)
 
 g = x(1:n);
 r = x(n+1:n+m);
-p = x(n+m+1:end);
+q_dot = x(n+m+1:end);
+g_circ = q_dot(1:n);
+r_dot = q_dot(n+1:end);
 
 u = sys.control_handle.u_bar + ...
     sys.control_handle.A_sin * sin(2 * pi * sys.control_handle.omega * t) + ...
     sys.control_handle.A_cos * cos(2 * pi * sys.control_handle.omega * t);
 
-eom = full(sys.symbolic_handle.eom_velocity_func(r, p, u));
-[g_circ, r_dot, p_dot] = deal(eom(1:n), eom(n+1:n+m), eom(n+m+1:end));
+q_ddot = full(sys.symbolic_handle.q_ddot_velocity_snd_func(r, q_dot, u));
 
 g_dot = rotation_trans(g(3)) * g_circ;
 
-x_dot = [g_dot; r_dot; p_dot];
+x_dot = [g_dot; r_dot; q_ddot];
 
 end
