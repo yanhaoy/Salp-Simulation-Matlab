@@ -39,12 +39,6 @@ sys.config.n = 3;
 % Shape dimension
 sys.config.m = numel(sys.config.link_length) - 1;
 
-% Drag coefficients
-% General thrust control with viscous drag on the link and joint:
-% sys.config.D_local = diag([10, 100, 0.272^2/12*100, 10, 100, 0.272^2/12*100, 10, 100, 0.272^2/12*100, 0.01, 0.01]);
-% LandSalp model with viscous drag on the wheel and joint:
-sys.config.D_local = load('./data/res.mat').D_local;
-
 % Inertia coefficients
 mass_actuator = 0.35;
 mass_wheel = 0.177;
@@ -66,6 +60,13 @@ for i = 1:sys.config.m + 1
     sys.config.M_local((i-1)*sys.config.n+1:i*sys.config.n-1, i*sys.config.n) = [-Sxy(2); Sxy(1)];
     sys.config.M_local(i*sys.config.n, (i-1)*sys.config.n+1:i*sys.config.n-1) = [-Sxy(2), Sxy(1)];
 end
+
+% Drag coefficients
+% General thrust control with viscous drag on the link and joint:
+% sys.config.D_local = diag([10, 100, 0.272^2/12*100, 10, 100, 0.272^2/12*100, 10, 100, 0.272^2/12*100, 0.01, 0.01]);
+% LandSalp model with viscous drag on the wheel and joint:
+sys.config.D_local = load('./data/res.mat').D_local;
+sys.config.M_local = load('./data/res.mat').M_local;
 
 %% Setup the model
 

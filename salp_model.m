@@ -133,8 +133,14 @@ M = jac_g' * M_local * jac_g;
 p = M * q_dot;
 f_drag = -jac_drag' * D_local * jac_drag * q_dot;
 L = q_dot' * M * q_dot / 2;
-p_dot_sol_thrust = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_thrust + f_drag;
-p_dot_sol_velocity = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_velocity + f_drag;
+
+D = jac_drag' * D_local * jac_drag;
+tau = (q_dot' * M * q_dot) / (q_dot' * D * q_dot);
+f_control_thrust_lag = jac_g_wheel' * reshape([u + u_dot .* tau, SX.zeros(m+1, 2)]', n*(m+1), 1);
+f_control_velocity_lag = jac_g_wheel' * D_local(1:3*(m+1), 1:3*(m+1)) * reshape([u + u_dot .* tau, SX.zeros(m+1, 2)]', n*(m+1), 1);
+
+p_dot_sol_thrust = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_thrust_lag + f_drag;
+p_dot_sol_velocity = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_velocity_lag + f_drag;
 
 q_ddot_snd_sol_thrust = inv(M) * (p_dot_sol_thrust - reshape(jacobian(M, r) * q_dot(n+1:end), size(M)) * q_dot);
 q_ddot_snd_sol_velocity = inv(M) * (p_dot_sol_velocity - reshape(jacobian(M, r) * q_dot(n+1:end), size(M)) * q_dot);
@@ -158,10 +164,10 @@ tmp = Function('q_ddot_fst_sol_thrust', {r, u, u_dot, D_local}, {q_ddot_fst_sol_
 sys.symbolic_handle.q_ddot_thrust_fst_func = Function('q_ddot_fst_sol_thrust', {r, u, u_dot}, {tmp(r, u, u_dot, sys.config.D_local)}, struct('cse', true));
 tmp = Function('q_ddot_fst_sol_velocity', {r, u, u_dot, D_local}, {q_ddot_fst_sol_velocity}, struct('cse', true));
 sys.symbolic_handle.q_ddot_velocity_fst_func = Function('q_ddot_fst_sol_velocity', {r, u, u_dot}, {tmp(r, u, u_dot, sys.config.D_local)}, struct('cse', true));
-tmp = Function('q_ddot_snd_sol_thrust', {r, q_dot, u, D_local, M_local}, {q_ddot_snd_sol_thrust}, struct('cse', true));
-sys.symbolic_handle.q_ddot_thrust_snd_func = Function('q_ddot_snd_sol_thrust', {r, q_dot, u}, {tmp(r, q_dot, u, sys.config.D_local, sys.config.M_local)}, struct('cse', true));
-tmp = Function('q_ddot_snd_sol_velocity', {r, q_dot, u, D_local, M_local}, {q_ddot_snd_sol_velocity}, struct('cse', true));
-sys.symbolic_handle.q_ddot_velocity_snd_func = Function('q_ddot_snd_sol_velocity', {r, q_dot, u}, {tmp(r, q_dot, u, sys.config.D_local, sys.config.M_local)}, struct('cse', true));
+tmp = Function('q_ddot_snd_sol_thrust', {r, q_dot, u, u_dot, D_local, M_local}, {q_ddot_snd_sol_thrust}, struct('cse', true));
+sys.symbolic_handle.q_ddot_thrust_snd_func = Function('q_ddot_snd_sol_thrust', {r, q_dot, u, u_dot}, {tmp(r, q_dot, u, u_dot, sys.config.D_local, sys.config.M_local)}, struct('cse', true));
+tmp = Function('q_ddot_snd_sol_velocity', {r, q_dot, u, u_dot, D_local, M_local}, {q_ddot_snd_sol_velocity}, struct('cse', true));
+sys.symbolic_handle.q_ddot_velocity_snd_func = Function('q_ddot_snd_sol_velocity', {r, q_dot, u, u_dot}, {tmp(r, q_dot, u, u_dot, sys.config.D_local, sys.config.M_local)}, struct('cse', true));
 sys.symbolic_handle.g_ddot_imu_body_func = Function('g_ddot_imu_body', {r, q_dot, q_ddot}, {g_ddot_imu_body}, struct('cse', true));
 sys.symbolic_handle.g_circ_imu_func = Function('g_circ_imu', {r, q_dot}, {g_circ_imu}, struct('cse', true));
 
