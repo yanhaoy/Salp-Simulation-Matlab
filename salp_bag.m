@@ -159,15 +159,10 @@ force_dot = lowpass(force_dot_raw', 2*fc, fs, 'Steepness', steepness)';
 %% Remove Constant Offset
 
 idx = find(sum(abs(command_raw)) > 0);
-
-const_accelerometer = [mean(accelerometer_raw(:, 1:idx(1)-1), 2), mean(accelerometer_raw(:, idx(end)+1:end), 2)]' - repmat([0, 9.80665, 0], 2, sys.config.m+1);
-[~, const_idx] = max(abs(const_accelerometer), [], 1);
-const_accelerometer = (const_accelerometer(const_idx+(0:2:2*sys.config.n*(sys.config.m+1)-2)) + repmat([0, 9.80665, 0], 1, sys.config.m+1))';
-accelerometer = accelerometer - const_accelerometer;
-const_gyro = [mean(gyro_raw(:, 1:idx(1)-1), 2), mean(gyro_raw(:, idx(end)+1:end), 2)]';
-[~, const_idx] = max(abs(const_gyro), [], 1);
-const_gyro = const_gyro(const_idx+(0:2:2*sys.config.n*(sys.config.m+1)-2))';
-gyro = gyro - const_gyro;
+for i = 1:9
+    p = polyfit(idx, accelerometer(i, idx), 1);
+    accelerometer(i, :) = accelerometer(i, :) - polyval(p, 1:size(accelerometer, 2));
+end
 
 %% Extract Execution Time
 

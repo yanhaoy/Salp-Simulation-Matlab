@@ -151,7 +151,7 @@ g_circ_imu = jac_g_imu * q_dot;
 g_circ_dot_imu = jacobian(g_circ_imu, [r; q_dot]) * [q_dot(n+1:end); q_ddot];
 tmp = SX.zeros(n*(m+1), 1);
 for i = 1:m+1
-    tmp((i-1)*n+1:i*n) = twist2rbvel(g_circ_imu((i-1)*n+1:i*n)) * g_circ_imu((i-1)*n+1:i*n);
+    tmp((i-1)*n+1:i*n) = rbvel2twist(twist2rbvel(g_circ_imu((i-1)*n+1:i*n)) * twist2rbvel(g_circ_imu((i-1)*n+1:i*n)));
 end
 g_ddot_imu_body = g_circ_dot_imu + tmp;
 
