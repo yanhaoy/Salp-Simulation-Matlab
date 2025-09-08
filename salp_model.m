@@ -142,8 +142,14 @@ f_control_velocity_lag = jac_g_wheel' * D_local(1:3*(m+1), 1:3*(m+1)) * reshape(
 p_dot_sol_thrust = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_thrust_lag + f_drag;
 p_dot_sol_velocity = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_velocity_lag + f_drag;
 
+p_dot_sol_el_thrust = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_thrust + f_drag;
+p_dot_sol_el_velocity = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_velocity + f_drag;
+
 q_ddot_snd_sol_thrust = inv(M) * (p_dot_sol_thrust - reshape(jacobian(M, r) * q_dot(n+1:end), size(M)) * q_dot);
 q_ddot_snd_sol_velocity = inv(M) * (p_dot_sol_velocity - reshape(jacobian(M, r) * q_dot(n+1:end), size(M)) * q_dot);
+
+q_ddot_snd_sol_el_thrust = inv(M) * (p_dot_sol_el_thrust - reshape(jacobian(M, r) * q_dot(n+1:end), size(M)) * q_dot);
+q_ddot_snd_sol_el_velocity = inv(M) * (p_dot_sol_el_velocity - reshape(jacobian(M, r) * q_dot(n+1:end), size(M)) * q_dot);
 
 %% IMU body velocity and acceleration
 
@@ -185,15 +191,25 @@ sys.symbolic_handle.q_ddot_velocity_fst_unid_func = Function('q_ddot_fst_sol_vel
 % From shape, thrust velocity control, and the time derivative of thrust velocity control (assuming known drag coefficient) to the time derivative of system body and shape velocities (first-order model)
 sys.symbolic_handle.q_ddot_velocity_fst_func = Function('q_ddot_fst_sol_velocity', {r, u, u_dot}, {sys.symbolic_handle.q_ddot_velocity_fst_unid_func(r, u, u_dot, sys.config.D_local)}, struct('cse', true));
 
-% From shape, thrust force control, the time derivative of thrust force control, drag coefficient, and inertia coefficient to the time derivative of system body and shape velocities (second-order model)
+% From shape, thrust force control, the time derivative of thrust force control, drag coefficient, and inertia coefficient to the time derivative of system body and shape velocities (second-order model assuming overdamping)
 sys.symbolic_handle.q_ddot_thrust_snd_unid_func = Function('q_ddot_snd_sol_thrust', {r, q_dot, u, u_dot, D_local, M_local}, {q_ddot_snd_sol_thrust}, struct('cse', true));
-% From shape, thrust force control, and the time derivative of thrust force control (assuming known drag and inertia coefficients) to the time derivative of system body and shape velocities (second-order model)
+% From shape, thrust force control, and the time derivative of thrust force control (assuming known drag and inertia coefficients) to the time derivative of system body and shape velocities (second-order model assuming overdamping)
 sys.symbolic_handle.q_ddot_thrust_snd_func = Function('q_ddot_snd_sol_thrust', {r, q_dot, u, u_dot}, {sys.symbolic_handle.q_ddot_thrust_snd_unid_func(r, q_dot, u, u_dot, sys.config.D_local, sys.config.M_local)}, struct('cse', true));
 
-% From shape, thrust velocity control, the time derivative of thrust velocity control, drag coefficient, and inertia coefficient to the time derivative of system body and shape velocities (second-order model)
+% From shape, thrust velocity control, the time derivative of thrust velocity control, drag coefficient, and inertia coefficient to the time derivative of system body and shape velocities (second-order model assuming overdamping)
 sys.symbolic_handle.q_ddot_velocity_snd_unid_func = Function('q_ddot_snd_sol_velocity', {r, q_dot, u, u_dot, D_local, M_local}, {q_ddot_snd_sol_velocity}, struct('cse', true));
-% From shape, thrust velocity control, and the time derivative of thrust velocity control (assuming known drag and inertia coefficients) to the time derivative of system body and shape velocities (second-order model)
+% From shape, thrust velocity control, and the time derivative of thrust velocity control (assuming known drag and inertia coefficients) to the time derivative of system body and shape velocities (second-order model assuming overdamping)
 sys.symbolic_handle.q_ddot_velocity_snd_func = Function('q_ddot_snd_sol_velocity', {r, q_dot, u, u_dot}, {sys.symbolic_handle.q_ddot_velocity_snd_unid_func(r, q_dot, u, u_dot, sys.config.D_local, sys.config.M_local)}, struct('cse', true));
+
+% From shape, thrust force control, the time derivative of thrust force control, drag coefficient, and inertia coefficient to the time derivative of system body and shape velocities (second-order model)
+sys.symbolic_handle.q_ddot_thrust_snd_el_unid_func = Function('q_ddot_snd_sol_el_thrust', {r, q_dot, u, D_local, M_local}, {q_ddot_snd_sol_el_thrust}, struct('cse', true));
+% From shape, thrust force control, and the time derivative of thrust force control (assuming known drag and inertia coefficients) to the time derivative of system body and shape velocities (second-order model)
+sys.symbolic_handle.q_ddot_thrust_snd_el_func = Function('q_ddot_snd_sol_el_thrust', {r, q_dot, u}, {sys.symbolic_handle.q_ddot_thrust_snd_el_unid_func(r, q_dot, u, sys.config.D_local, sys.config.M_local)}, struct('cse', true));
+
+% From shape, thrust velocity control, the time derivative of thrust velocity control, drag coefficient, and inertia coefficient to the time derivative of system body and shape velocities (second-order model)
+sys.symbolic_handle.q_ddot_velocity_snd_el_unid_func = Function('q_ddot_snd_sol_el_velocity', {r, q_dot, u, D_local, M_local}, {q_ddot_snd_sol_el_velocity}, struct('cse', true));
+% From shape, thrust velocity control, and the time derivative of thrust velocity control (assuming known drag and inertia coefficients) to the time derivative of system body and shape velocities (second-order model)
+sys.symbolic_handle.q_ddot_velocity_snd_el_func = Function('q_ddot_snd_sol_el_velocity', {r, q_dot, u}, {sys.symbolic_handle.q_ddot_velocity_snd_el_unid_func(r, q_dot, u, sys.config.D_local, sys.config.M_local)}, struct('cse', true));
 
 % From shape, system body and shape velocities, and the time derivatives of system body and shape velocities to IMU accelerations
 sys.symbolic_handle.g_ddot_imu_body_func = Function('g_ddot_imu_body', {r, q_dot, q_ddot}, {g_ddot_imu_body}, struct('cse', true));
