@@ -136,11 +136,11 @@ L = q_dot' * M * q_dot / 2;
 
 D = jac_drag' * D_local * jac_drag;
 tau = if_else(norm(q_dot) < 1e-6, trace(M)/trace(D), (q_dot' * M * q_dot) / (q_dot' * D * q_dot));
-f_control_thrust_lag = jac_g_wheel' * reshape([u + u_dot .* tau, SX.zeros(m+1, 2)]', n*(m+1), 1);
-f_control_velocity_lag = jac_g_wheel' * D_local(1:3*(m+1), 1:3*(m+1)) * reshape([u + u_dot .* tau, SX.zeros(m+1, 2)]', n*(m+1), 1);
+f_control_thrust_lag = jac_g_wheel' * reshape([u_dot .* tau, SX.zeros(m+1, 2)]', n*(m+1), 1);
+f_control_velocity_lag = jac_g_wheel' * D_local(1:3*(m+1), 1:3*(m+1)) * reshape([u_dot .* tau, SX.zeros(m+1, 2)]', n*(m+1), 1);
 
-p_dot_sol_thrust = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_thrust_lag + f_drag;
-p_dot_sol_velocity = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_velocity_lag + f_drag;
+p_dot_sol_thrust = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_thrust_lag;
+p_dot_sol_velocity = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_velocity_lag;
 
 p_dot_sol_el_thrust = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_thrust + f_drag;
 p_dot_sol_el_velocity = [(dual_lie_bracket_SE2(q_dot(1:n), p(1:n))); jacobian(L, r)'] + f_control_velocity + f_drag;

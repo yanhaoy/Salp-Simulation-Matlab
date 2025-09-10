@@ -18,9 +18,6 @@ fileList = fullfile({file.folder}, {file.name});
 bag_name = fileList{index};
 bag = rosbag(bag_name);
 
-% Smoothing settings
-steepness = 1 - 1e-12;
-
 % Control frequency (Hz)
 fc = 1/6;
 
@@ -136,36 +133,29 @@ force_dot_raw = [force_raw(:, 2) - force_raw(:, 1), ...
 
 %% Process Data
 
-% Smooth actuation force
-force = lowpass(force_raw', 2*fc, fs, 'Steepness', steepness)';
-velocity = lowpass(velocity_raw', 2*fc, fs, 'Steepness', steepness)';
+% Smooth actuation
+force = bandpass(force_raw', [fc/3, fc*3], fs, 'ImpulseResponse', 'iir')';
+velocity = lowpass(velocity_raw', 2*fc, fs, 'ImpulseResponse', 'iir')';
+command_dot = lowpass(command_dot_raw', 2*fc, fs, 'ImpulseResponse', 'iir')';
+force_dot = bandpass(force_dot_raw', [fc/3, fc*3], fs, 'ImpulseResponse', 'iir')';
 
 % Smooth shape
-shape = lowpass(shape_raw', 2*fc, fs, 'Steepness', steepness)';
-shape_velocity = lowpass(shape_velocity_raw', 2*fc, fs, 'Steepness', steepness)';
-shape_acceleration = lowpass(shape_acceleration_raw', 2*fc, fs, 'Steepness', steepness)';
+shape = lowpass(shape_raw', 2*fc, fs, 'ImpulseResponse', 'iir')';
+shape_velocity = lowpass(shape_velocity_raw', 2*fc, fs, 'ImpulseResponse', 'iir')';
+shape_acceleration = lowpass(shape_acceleration_raw', 2*fc, fs, 'ImpulseResponse', 'iir')';
 
 % Smooth position
-position = lowpass(position_raw', 2*fc, fs, 'Steepness', steepness)';
-position_velocity = lowpass(position_velocity_raw', 2*fc, fs, 'Steepness', steepness)';
-position_acceleration = lowpass(position_acceleration_raw', 2*fc, fs, 'Steepness', steepness)';
+position = lowpass(position_raw', 2*fc, fs, 'ImpulseResponse', 'iir')';
+position_velocity = lowpass(position_velocity_raw', 2*fc, fs, 'ImpulseResponse', 'iir')';
+position_acceleration = lowpass(position_acceleration_raw', 2*fc, fs, 'ImpulseResponse', 'iir')';
 
-accelerometer = lowpass(accelerometer_raw', 2*fc, fs, 'Steepness', steepness)';
-gyro = lowpass(gyro_raw', 2*fc, fs, 'Steepness', steepness)';
-
-command_dot = lowpass(command_dot_raw', 2*fc, fs, 'Steepness', steepness)';
-force_dot = lowpass(force_dot_raw', 2*fc, fs, 'Steepness', steepness)';
-
-%% Remove Constant Offset
-
-idx = find(sum(abs(command_raw)) > 0);
-for i = 1:9
-    p = polyfit(idx, accelerometer(i, idx), 1);
-    accelerometer(i, :) = accelerometer(i, :) - polyval(p, 1:size(accelerometer, 2));
-end
+% Smooth imu
+accelerometer = bandpass(accelerometer_raw', [fc/3, fc*3], fs, 'ImpulseResponse', 'iir')';
+gyro = bandpass(gyro_raw', [fc/3, fc*3], fs, 'ImpulseResponse', 'iir')';
 
 %% Extract Execution Time
 
+idx = find(sum(abs(command_raw)) > 0);
 time = time_resample(:, idx);
 command = command_raw(:, idx);
 command_dot = command_dot(:, idx);

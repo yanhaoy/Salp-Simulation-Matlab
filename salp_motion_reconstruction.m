@@ -32,8 +32,8 @@ load([bag_name(1:end-4), '.mat'], 'shape', 'command', 'command_dot', 'position_v
 %% Compute Predicted Acceleration
 [n, m] = deal(sys.config.n, sys.config.m);
 q_dot_velocity = full(sys.symbolic_handle.q_dot_velocity_func(shape, command));
-q_ddot_velocity = full(sys.symbolic_handle.q_ddot_velocity_fst_func(shape, command, command_dot));
-% q_ddot_velocity = full(sys.symbolic_handle.q_ddot_velocity_snd_func(shape, q_dot_velocity, command, command_dot));
+% q_ddot_velocity = full(sys.symbolic_handle.q_ddot_velocity_fst_func(shape, command, command_dot));
+q_ddot_velocity = full(sys.symbolic_handle.q_ddot_velocity_snd_func(shape, [position_velocity; shape_velocity], command, command_dot));
 
 g_circ_imu_mocap = reshape(full(sys.symbolic_handle.g_circ_imu_func(shape, [position_velocity; shape_velocity])),  3, 3, []);
 g_circ_imu_model = reshape(full(sys.symbolic_handle.g_circ_imu_func(shape, q_dot_velocity)),  3, 3, []);
@@ -210,7 +210,7 @@ for j = 1:3
     ylim(ax(2*j+1), [-1, 1] * max(abs(tmp)));
     ax(2*j+1).YAxis(1).Color = 'k';
     ax(2*j+1).YAxis(2).Color = 'k';
-    ylabel(ax(2*j+1), 'Angular Acceleration $(rad/s^2)$');
+    ylabel(ax(2*j+1), 'Angular Velocity $(rad/s)$');
     axis(ax(2*j+1), 'square');
     legend(h_1, {'$a^x_{\mathrm{mocap}}$', '$a^y_{\mathrm{mocap}}$', '$\omega^z_{\mathrm{mocap}}$', ...
         '$a^x_{\mathrm{imu}}$', '$a^y_{\mathrm{imu}}$', '$\omega^z_{\mathrm{imu}}$'}, ...
