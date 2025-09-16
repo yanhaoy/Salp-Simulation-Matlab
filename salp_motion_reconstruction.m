@@ -40,6 +40,9 @@ g_circ_imu_model = reshape(full(sys.symbolic_handle.g_circ_imu_func(shape, q_dot
 g_ddot_imu_body_mocap = reshape(full(sys.symbolic_handle.g_ddot_imu_body_func(shape, [position_velocity; shape_velocity], [position_acceleration; shape_acceleration])), 3, 3, []);
 g_ddot_imu_body_model = reshape(full(sys.symbolic_handle.g_ddot_imu_body_func(shape, [position_velocity; shape_velocity], q_ddot_velocity)), 3, 3, []);
 
+f_link_mocap = full(sys.symbolic_handle.f_link_func(shape, q_dot_velocity, [position_acceleration; shape_acceleration]));
+f_link_model = full(sys.symbolic_handle.f_link_func(shape, q_dot_velocity, q_ddot_velocity));
+
 accelerometer = accelerometer([3, 1, 2, 6, 4, 5, 9, 7, 8], :);
 gyro = gyro([3, 1, 2, 6, 4, 5, 9, 7, 8], :);
 imu = reshape([accelerometer([1, 2], :); gyro(3, :); accelerometer([4, 5], :); gyro(6, :); accelerometer([7, 8], :); gyro(9, :)], 3, 3, []);

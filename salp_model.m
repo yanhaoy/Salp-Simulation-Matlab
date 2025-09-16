@@ -161,6 +161,21 @@ for i = 1:m+1
 end
 g_ddot_imu_body = g_circ_dot_imu + tmp;
 
+%% Net force on individual links
+
+g_circ_link = jac_g * q_dot;
+g_circ_dot_link = jacobian(g_circ_link, [r; q_dot]) * [q_dot(n+1:end); q_ddot];
+tmp = SX.zeros(n*(m+1), 1);
+for i = 1:m+1
+    tmp((i-1)*n+1:i*n) = rbvel2twist(twist2rbvel(g_circ_link((i-1)*n+1:i*n)) * twist2rbvel(g_circ_link((i-1)*n+1:i*n)));
+end
+g_ddot_link_body = g_circ_dot_link + tmp;
+
+f_link = SX.zeros(n*(m+1), 1);
+for i = 1:m+1
+    f_link((i-1)*n+1:i*n) = M_local((i-1)*n+1:i*n, (i-1)*n+1:i*n) * g_ddot_link_body((i-1)*n+1:i*n);
+end
+
 %% Create function handles
 
 % From system shape, thrust force control, and drag coefficient to system body and shape velocities
@@ -216,5 +231,9 @@ sys.symbolic_handle.g_ddot_imu_body_func = Function('g_ddot_imu_body', {r, q_dot
 
 % From shape and system body and shape velocities to IMU body velocities
 sys.symbolic_handle.g_circ_imu_func = Function('g_circ_imu', {r, q_dot}, {g_circ_imu}, struct('cse', true));
+
+% From shape, system body and shape velocities, and the time derivatives of system body and shape velocities to net forces on individual links
+tmp = Function('f_link', {r, q_dot, q_ddot, M_local}, {f_link}, struct('cse', true));
+sys.symbolic_handle.f_link_func = Function('f_link', {r, q_dot, q_ddot}, {tmp(r, q_dot, q_ddot, sys.config.M_local)}, struct('cse', true));
 
 end
