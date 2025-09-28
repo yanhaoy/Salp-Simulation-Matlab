@@ -115,7 +115,7 @@ jac_drag = [jac_g_wheel; SX.zeros(m, n), eye(m)];
 
 % Force in coordinates due to control input
 f_control_thrust = jac_g_wheel' * reshape([u, SX.zeros(m+1, 2)]', n*(m+1), 1);
-f_control_velocity = jac_g_wheel' * D_local(1:3*(m+1), 1:3*(m+1)) * ...
+f_control_velocity = jac_g_wheel' * diag(diag(D_local(1:3*(m+1), 1:3*(m+1)))) * ...
     reshape([u, SX.zeros(m+1, 2)]', n*(m+1), 1);
 
 % Reconstruct the motion
